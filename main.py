@@ -1,6 +1,7 @@
 from bs4 import BeautifulSoup
 import requests
 import pandas as pd
+import unicodedata
 
 topics_url = 'https://github.com/topics'
 response = requests.get(topics_url)
@@ -9,10 +10,7 @@ page_contents = response.text
 page_contents[:1000]
 with open('webpage.html', 'w', encoding='utf-8') as f:
     f.write(page_contents)
-    
-with open('webpage.html', 'r', encoding='utf-8') as f:
-    page_contents = f.read()
-    
+        
 doc = BeautifulSoup(page_contents, 'html.parser')
 
 selected_title_tag = 'f3 lh-condensed mb-0 mt-1 Link--primary'
@@ -33,14 +31,18 @@ topic_titles = []
 for tag in topic_title_tags:
     topic_titles.append(tag.text)
     
+    
 print(topic_titles)
 
-topic_descriptions = []
+try:
+    topic_descs = []
 
-for tag in topic_desc_tags:
-    topic_descriptions.append(tag.text)
+    for tag in topic_desc_tags:
+        topic_descs.append(tag.text.strip())
 
-print(topic_desc_tags)
+    print(topic_descs)
+except Exception as e:
+    print(f"Error: {e}")
     
 topic_urls = []
 base_url = 'https://github.com'
@@ -51,9 +53,27 @@ print(topic_urls)
 
 topics_dict = {
     'title': topic_titles,
-    'description': topic_descriptions,
+    'description': topic_descs,
     'url': topic_urls
 }
 
-topic_df = pd.DataFrame(topics_dict)
+topic_df = pd.DataFrame(topics_dict).to_csv('topics.csv',index = None, encoding='utf-8')
 
+topic_page_url = topic_urls[0]
+
+response2 = requests.get(topic_page_url)
+
+print(len(response2.text))
+
+
+page_contents2 = response2.text
+page_contents2[:1000]
+with open('topics.html', 'w', encoding='utf-8') as f:
+    f.write(page_contents2)
+        
+topic_doc = BeautifulSoup(page_contents2, 'html.parser')
+
+
+repo_h3_class = 'f3 color-fg-muted text-normal lh-condensed'
+repo_tags = topic_doc.find_all('h3', {'class' : repo_h3_class})
+print(len(repo_tags))
