@@ -63,8 +63,6 @@ topic_page_url = topic_urls[0]
 
 response2 = requests.get(topic_page_url)
 
-print(len(response2.text))
-
 
 page_contents2 = response2.text
 page_contents2[:1000]
@@ -76,4 +74,48 @@ topic_doc = BeautifulSoup(page_contents2, 'html.parser')
 
 repo_h3_class = 'f3 color-fg-muted text-normal lh-condensed'
 repo_tags = topic_doc.find_all('h3', {'class' : repo_h3_class})
-print(len(repo_tags))
+a_tags = repo_tags[0].find_all('a')
+
+print(a_tags[0].text.strip())
+print(a_tags[1].text.strip())
+repo_url = base_url + a_tags[1]['href']
+print(repo_url)
+
+star_tags = topic_doc.find_all('span', { 'class': 'Counter js-social-count'})
+print(len(star_tags))
+print(star_tags[0].text.strip())
+
+def parse_star_count(stars_str):
+    stars_str = stars_str.strip()
+    if stars_str[-1] == 'k':
+        return int(float(stars_str[:-1]) * 1000)
+    return int(stars_str)
+
+
+
+
+def get_repo_info(h1_tag, star_tag):
+    a_tags = h1_tag.find_all('a')
+    username = a_tags[0].text.strip()
+    repo_name = a_tags[1].text.strip()
+    repo_url = base_url + a_tags[1]['href']
+    stars = parse_star_count(star_tags[0].text.strip())
+    return username, repo_name, repo_url, stars
+
+print(get_repo_info(repo_tags[0], star_tags[0]))
+
+topic_repos_dict = {
+    'username': [],
+    'repo_name': [],
+    'stars': [],
+    'repo_url': []
+}
+for i in range(len(repo_tags)):
+    repo_info = get_repo_info(repo_tags[i], star_tags[i])
+    topic_repos_dict['username'].append(repo_info[0])
+    topic_repos_dict['repo_name'].append(repo_info[1])
+    topic_repos_dict['stars'].append(repo_info[2])
+    topic_repos_dict['repo_url'].append(repo_info[3])
+    
+topic_repos_df = pd.DataFrame(topic_repos_dict).to_csv('3dtopic.csv', encoding='utf-8')
+print(topic_repos_df)
