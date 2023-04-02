@@ -137,30 +137,53 @@ def get_topic_urls(doc):
         
     return topic_urls
 
-def scrape_topics():
-    topic_url = 'https://github.com/topics'
+def scrape_topics(page_num):
+    topic_url = 'https://github.com/topics?page={}'.format(page_num)
     response = requests.get(topic_url)
     if response.status_code != 200:
         raise Exception('Failed to Load {}'.format(topic_url))
     
+    page_contents = response.text        
+    doc = BeautifulSoup(page_contents, 'html.parser')
+    
+    selected_title_tag = 'f3 lh-condensed mb-0 mt-1 Link--primary'
+    topic_title_tags = doc.find_all('p', {'class' : selected_title_tag})
+    topic_titles = []
+    for tag in topic_title_tags:
+        topic_titles.append(tag.text)
+    
+    selected_desc_tag = 'f5 color-fg-muted mb-0 mt-1'
+    topic_desc_tags = doc.find_all('p', {'class' : selected_desc_tag})
+    topic_descs = []
+    for tag in topic_desc_tags:
+        topic_descs.append(tag.text.strip())
+    
+    topic_link_tags = doc.find_all('a', {'class' : 'no-underline flex-grow-0'})
+    topic_urls = []
+    base_url = 'https://github.com'
+    for tag in topic_link_tags:
+        topic_urls.append(base_url + tag['href'])
+        
     topics_dict = {
-        'title': get_topic_titles(doc),
-        'description': get_topic_descs(doc),
-        'url': get_topic_urls(doc)
+        'title': topic_titles,
+        'description': topic_descs,
+        'url': topic_urls
     }
     
     return pd.DataFrame(topics_dict)
-    
-
 
 def scrape_topics_repos():
-    print("Scraping an list of the Topics in github")
-    topics_df = scrape_topics()
+    print("Scraping a list of the Topics in GitHub")
+    all_topics_df = pd.DataFrame()
     
+    for page_num in range(1, 7):
+        topics_df = scrape_topics(page_num)
+        all_topics_df = pd.concat([all_topics_df, topics_df], ignore_index=True)
+        
     os.makedirs('csv_files', exist_ok=True)
     
-    for index, row in topics_df.iterrows():
+    for index, row in all_topics_df.iterrows():
         print("Top Repositories are getting scraped for {}".format(row['title']))
         scrape_topic(row['url'], 'csv_files/{}.csv'.format(row['title']))
-        
+
 scrape_topics_repos()
